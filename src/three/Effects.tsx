@@ -6,7 +6,6 @@ import {
   Bloom,
   ChromaticAberration,
   Vignette,
-  SMAA,
   Noise,
   ToneMapping,
 } from '@react-three/postprocessing';
@@ -45,8 +44,7 @@ export function Effects() {
   });
 
   return (
-    <EffectComposer multisampling={0}>
-      <SMAA />
+    <EffectComposer multisampling={2}>
       <Bloom
         ref={bloomRef as unknown as React.Ref<typeof BloomEffect>}
         mipmapBlur

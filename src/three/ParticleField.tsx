@@ -9,7 +9,7 @@ import { sceneState } from './sceneState';
  * additive blending with depthWrite off so sorting never matters.
  */
 
-const COUNT = 1200;
+const COUNT = 600;
 const INNER_RADIUS = 3.2;
 const OUTER_RADIUS = 11;
 

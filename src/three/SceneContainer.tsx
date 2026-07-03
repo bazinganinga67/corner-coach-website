@@ -148,7 +148,7 @@ const DPR_MAX = 1.75;
 
 export default function SceneContainer() {
   const [dpr, setDpr] = useState(() =>
-    Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1.5),
+    Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1),
   );
   const supported = useMemo(canRenderScene, []);
 

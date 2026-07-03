@@ -63,7 +63,8 @@ export function MagneticButton({
   const size = small ? 'px-5 py-2.5 text-[13px]' : 'px-8 py-4 text-[15px]';
 
   const variants: Record<string, string> = {
-    solid: 'bg-accent text-white hover:bg-white hover:text-ink',
+    solid:
+      'bg-white/[0.07] text-white border border-white/[0.12] backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:bg-white/[0.14] hover:border-white/[0.25]',
     outline: 'border border-white/25 text-white hover:border-white/70 bg-white/[0.02]',
     ghost: 'text-white/80 hover:text-white',
   };
