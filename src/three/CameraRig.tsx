@@ -47,7 +47,7 @@ const SHOTS: Record<string, Shot> = {
   'how-it-works': { pos: [-4.8, -0.9, 3.0], look: [0.9, 0.1, 0], fov: 38, roll: 0.05 },
   voice: { pos: [0.3, -0.1, 3.4], look: [0, 0.25, 0], fov: 58, roll: -0.035 },
   pricing: { pos: [3.4, 2.2, 5.6], look: [0.7, 0.3, 0], fov: 45, roll: 0.04 },
-  download: { pos: [0, -0.8, 7.8], look: [0, 0.5, 0], fov: 32, roll: 0 },
+  download: { pos: [0.4, -0.2, 7.8], look: [0, 0.35, 0], fov: 32, roll: 0 },
 };
 
 interface TrackPoint {

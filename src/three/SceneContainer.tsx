@@ -1,9 +1,10 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerformanceMonitor } from '@react-three/drei';
+import { PerformanceMonitor, Environment, Lightformer } from '@react-three/drei';
 
 import { CameraRig } from './CameraRig';
+import { CinematicObject } from './CinematicObject';
 import { ParticleField } from './ParticleField';
 import { ImpactFX } from './ImpactFX';
 import { Effects } from './Effects';
@@ -174,6 +175,19 @@ export default function SceneContainer() {
         <color attach="background" args={['#050508']} />
 
         <GymLighting />
+
+        {/* Photographic key + red kicker for the glove — GymLighting alone
+            is ambience; these give the leather its form and rim. */}
+        <spotLight
+          position={[3.5, 4.5, 5.5]}
+          angle={0.6}
+          penumbra={1}
+          decay={2}
+          intensity={200}
+          color="#ffe3c4"
+        />
+        <pointLight position={[-5, -1.5, -3.5]} decay={2} intensity={70} color="#FF2E3E" />
+
         <PerformanceMonitor
           onIncline={() => setDpr(Math.min(window.devicePixelRatio || 1, DPR_MAX))}
           onDecline={() => setDpr(1)}
@@ -183,6 +197,43 @@ export default function SceneContainer() {
           <GymFloor />
           <GymAtmosphere />
           <Suspense fallback={null}>
+            {/* Procedural reflection environment — no network fetch, rendered
+                once. The leather clearcoat is dead without something to
+                reflect; these panels are what sell it as a real material. */}
+            <Environment resolution={256} frames={1}>
+              <Lightformer
+                form="rect"
+                intensity={2.4}
+                position={[0, 5, -9]}
+                scale={[12, 8, 1]}
+                color="#ffffff"
+              />
+              <Lightformer
+                form="rect"
+                intensity={1.6}
+                position={[-5, 1, -1]}
+                rotation-y={Math.PI / 2}
+                scale={[7, 3, 1]}
+                color="#ffd9c0"
+              />
+              <Lightformer
+                form="rect"
+                intensity={1.1}
+                position={[5, -1, -1]}
+                rotation-y={-Math.PI / 2}
+                scale={[7, 3, 1]}
+                color="#7d9bff"
+              />
+              <Lightformer
+                form="circle"
+                intensity={2.2}
+                position={[0, -4, 2]}
+                scale={[4, 4, 1]}
+                color="#FF2E3E"
+              />
+            </Environment>
+
+            <CinematicObject />
             <ParticleField />
             <ImpactFX />
           </Suspense>

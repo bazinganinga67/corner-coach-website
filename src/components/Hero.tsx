@@ -10,7 +10,6 @@ export function Hero({ revealed }: { revealed?: boolean }) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const lineARef = useRef<HTMLDivElement | null>(null);
   const lineBRef = useRef<HTMLDivElement | null>(null);
-  const phoneRef = useRef<HTMLDivElement | null>(null);
   const metaRef = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
@@ -26,7 +25,6 @@ export function Hero({ revealed }: { revealed?: boolean }) {
 
       gsap.to(lineARef.current, { xPercent: -14, ease: 'none', scrollTrigger: common });
       gsap.to(lineBRef.current, { xPercent: 10, ease: 'none', scrollTrigger: { ...common } });
-      gsap.to(phoneRef.current, { yPercent: 22, scale: 0.94, rotationY: -8, ease: 'none', scrollTrigger: { ...common } });
       gsap.to(metaRef.current, { opacity: 0, yPercent: -40, ease: 'none', scrollTrigger: { ...common, end: '40% top' } });
     }, sectionRef);
 
@@ -60,7 +58,8 @@ export function Hero({ revealed }: { revealed?: boolean }) {
 
       {/* Main content */}
       <div className="relative z-10 max-w-[1500px] w-full mx-auto px-6 md:px-10 flex-1 flex flex-col justify-center">
-        <div className="grid lg:grid-cols-[1fr_auto] items-center gap-10">
+        {/* Single column — the WebGL glove owns the right half of the frame. */}
+        <div className="max-w-[62rem]">
           <div className="relative z-10">
             <div ref={lineARef} className="will-change-transform" style={{ perspective: '1000px' }}>
               <SplitReveal
@@ -108,8 +107,6 @@ export function Hero({ revealed }: { revealed?: boolean }) {
               </FadeUp>
             </div>
           </div>
-
-          <div ref={phoneRef} className="relative flex justify-center will-change-transform mt-14 lg:mt-0 lg:-my-10" />
         </div>
       </div>
 

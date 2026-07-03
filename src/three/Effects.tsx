@@ -8,7 +8,9 @@ import {
   Vignette,
   SMAA,
   Noise,
+  ToneMapping,
 } from '@react-three/postprocessing';
+import { ToneMappingMode } from 'postprocessing';
 import type { BloomEffect } from 'postprocessing';
 
 import { sceneState } from './sceneState';
@@ -53,6 +55,11 @@ export function Effects() {
         luminanceSmoothing={0.25}
         radius={0.85}
       />
+      {/* Filmic rolloff AFTER bloom: HDR speculars compress like camera
+          footage instead of clipping — the difference between "render" and
+          "photo" for the PBR leather. Canvas stays `flat` so this is the
+          only tone map in the chain. */}
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <ChromaticAberration offset={caOffset} radialModulation modulationOffset={0.12} />
       <Vignette eskil={false} offset={0.35} darkness={0.75} />
       <Noise opacity={0.04} />
