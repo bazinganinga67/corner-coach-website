@@ -3,15 +3,20 @@ import * as THREE from 'three';
 /**
  * Procedural boxing-glove sculpt + leather material maps.
  *
- * The body is a high-res sphere displaced radially by a field of gaussian
- * bumps on the unit sphere — the same way a sculptor pushes clay: a broad
- * knuckle mass, four individual knuckle ridges, a thumb mound, a heel pad,
- * a flattened palm and a tapered wrist. Because it stays a displaced sphere
- * it keeps clean UVs (for the leather grain maps) and produces ONE smooth,
- * continuous surface — no primitive-intersection seams to give it away.
+ * The body starts as a high-res sphere displaced radially by gaussian bumps
+ * (knuckle mass, four knuckle ridges, an elongated thumb, heel pad, palm
+ * flatten, wrist taper) — then the whole form is CURLED forward around the
+ * wrist axis. That curl is what makes it read as a glove: a real glove is
+ * comma-shaped in profile because the fist rolls toward the palm, and no
+ * amount of bump detail on a straight sphere ever conveys that.
  *
- * Everything here runs once at load on the CPU (~20k vertices), then the
- * geometry is static for the lifetime of the scene.
+ * Orientation: wrist/cuff at -y, knuckle face rolled up-forward (+y/+z).
+ * The geometry is right-handed (thumb at +x); `mirrorGeometry` bakes a
+ * proper left glove (flipped winding, recomputed normals) so a pair can
+ * share materials without inside-out rendering.
+ *
+ * Everything runs once at load on the CPU (~20k vertices per glove), then
+ * the geometry is static for the lifetime of the scene.
  */
 
 /** Gaussian falloff on the unit sphere: 1 at the bump center, 0 away from it. */
@@ -19,14 +24,20 @@ function gauss(dot: number, width: number): number {
   return Math.exp((dot - 1) / width);
 }
 
-// Sculpt landmarks (unit directions). Knuckles face +z, wrist points +y.
-const KNUCKLE_MASS = new THREE.Vector3(0, 0.28, 0.96).normalize();
+// Sculpt landmarks (unit directions). Knuckle face up-forward, wrist -y.
+const KNUCKLE_MASS = new THREE.Vector3(0, 0.35, 0.93).normalize();
 const KNUCKLES = [-0.45, -0.16, 0.16, 0.45].map((x) =>
-  new THREE.Vector3(x, 0.4, 0.9).normalize(),
+  new THREE.Vector3(x, 0.52, 0.83).normalize(),
 );
-const THUMB = new THREE.Vector3(0.95, -0.32, 0.52).normalize();
-const HEEL = new THREE.Vector3(0, -0.72, -0.55).normalize();
-const PALM = new THREE.Vector3(0, 0.05, -1).normalize();
+// Two overlapping mounds along an arc: an elongated thumb, not a wart.
+const THUMB_A = new THREE.Vector3(0.92, 0.05, 0.42).normalize();
+const THUMB_B = new THREE.Vector3(0.97, -0.28, 0.22).normalize();
+const HEEL = new THREE.Vector3(0, -0.35, -0.78).normalize();
+const PALM = new THREE.Vector3(0, 0.15, -1).normalize();
+
+// Forward curl: 0 at the wrist pivot, full at the knuckle crown.
+const CURL_ANGLE = 0.55;
+const CURL_PIVOT_Y = -0.45;
 
 export function createGloveBodyGeometry(): THREE.BufferGeometry {
   const geo = new THREE.SphereGeometry(1, 168, 128);
@@ -38,32 +49,66 @@ export function createGloveBodyGeometry(): THREE.BufferGeometry {
 
     let r = 1;
 
-    // Broad padded mass over the fist front.
-    r += 0.13 * gauss(v.dot(KNUCKLE_MASS), 0.3);
+    // Broad padded mass over the striking face.
+    r += 0.16 * gauss(v.dot(KNUCKLE_MASS), 0.32);
 
     // Individual knuckle ridges — tight, shallow, mostly read via specular.
     for (const k of KNUCKLES) r += 0.045 * gauss(v.dot(k), 0.012);
 
-    // Thumb mound, blended smoothly into the side.
-    r += 0.4 * gauss(v.dot(THUMB), 0.095);
+    // Thumb: elongated ridge from side toward the palm.
+    r += 0.3 * gauss(v.dot(THUMB_A), 0.07);
+    r += 0.26 * gauss(v.dot(THUMB_B), 0.07);
 
     // Heel of the hand.
-    r += 0.09 * gauss(v.dot(HEEL), 0.26);
+    r += 0.08 * gauss(v.dot(HEEL), 0.22);
 
     // Palm side sits flatter than the padded front.
-    r -= 0.07 * gauss(v.dot(PALM), 0.34);
+    r -= 0.07 * gauss(v.dot(PALM), 0.3);
 
-    // Taper into the wrist.
-    r *= 1 - 0.34 * THREE.MathUtils.smoothstep(v.y, 0.5, 1.0);
+    // Taper into the wrist (bottom pole).
+    r *= 1 - 0.35 * THREE.MathUtils.smoothstep(-v.y, 0.45, 1.0);
 
-    pos.setXYZ(i, v.x * r * 0.96, v.y * r * 1.12, v.z * r * 1.03);
+    // Displaced position, then the comma curl: rotate around the x-axis at
+    // the wrist pivot, angle ramping toward the crown.
+    let px = v.x * r;
+    let py = v.y * r;
+    let pz = v.z * r;
+
+    const theta = CURL_ANGLE * THREE.MathUtils.smoothstep(py, CURL_PIVOT_Y, 1.1);
+    const dy = py - CURL_PIVOT_Y;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    const cy = CURL_PIVOT_Y + dy * cos - pz * sin;
+    const cz = dy * sin + pz * cos;
+    py = cy;
+    pz = cz;
+
+    pos.setXYZ(i, px * 1.04, py * 1.1, pz);
   }
 
   geo.computeVertexNormals();
   return geo;
 }
 
-/** Elastic cuff with molded ribs, flaring slightly toward the opening. */
+/** Bake a left glove: mirror in x, fix triangle winding, rebuild normals. */
+export function mirrorGeometry(src: THREE.BufferGeometry): THREE.BufferGeometry {
+  const geo = src.clone();
+  geo.scale(-1, 1, 1);
+  const index = geo.getIndex();
+  if (index) {
+    const arr = index.array;
+    for (let i = 0; i < arr.length; i += 3) {
+      const tmp = arr[i + 1];
+      arr[i + 1] = arr[i + 2];
+      arr[i + 2] = tmp;
+    }
+    index.needsUpdate = true;
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Elastic cuff with molded ribs, flaring toward the (bottom) opening. */
 export function createCuffGeometry(): THREE.BufferGeometry {
   const height = 0.85;
   const geo = new THREE.CylinderGeometry(0.6, 0.72, height, 96, 28, false);

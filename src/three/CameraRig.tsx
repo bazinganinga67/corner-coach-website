@@ -42,12 +42,15 @@ interface Shot {
  *  download      long-lens low hero shot, looking up — the finale
  */
 const SHOTS: Record<string, Shot> = {
+  // Moderate, product-render angles: the camera reframes between sections
+  // but never swings overhead or dives below the object — restraint reads
+  // as intent.
   top: { pos: [2.2, 0.3, 6.6], look: [-1.35, 0.1, 0], fov: 42, roll: 0 },
-  numbers: { pos: [-0.8, 3.6, 4.2], look: [0, 0.1, 0], fov: 55, roll: -0.055 },
-  'how-it-works': { pos: [-4.8, -0.9, 3.0], look: [0.9, 0.1, 0], fov: 38, roll: 0.05 },
-  voice: { pos: [0.3, -0.1, 3.4], look: [0, 0.25, 0], fov: 58, roll: -0.035 },
-  pricing: { pos: [3.4, 2.2, 5.6], look: [0.7, 0.3, 0], fov: 45, roll: 0.04 },
-  download: { pos: [0.4, -0.2, 7.8], look: [0, 0.35, 0], fov: 32, roll: 0 },
+  numbers: { pos: [-1.4, 1.9, 5.2], look: [0, 0, 0], fov: 48, roll: -0.03 },
+  'how-it-works': { pos: [-4.0, 0.3, 3.8], look: [0.7, 0.1, 0], fov: 40, roll: 0.03 },
+  voice: { pos: [0.4, 0.15, 3.8], look: [0, 0.2, 0], fov: 48, roll: -0.02 },
+  pricing: { pos: [2.9, 1.3, 5.8], look: [0.6, 0.2, 0], fov: 44, roll: 0.025 },
+  download: { pos: [0.4, -0.2, 7.8], look: [0, 0.35, 0], fov: 34, roll: 0 },
 };
 
 interface TrackPoint {

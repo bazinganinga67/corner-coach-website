@@ -1,21 +1,27 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { createGloveBodyGeometry, createCuffGeometry, createLeatherMaps } from './gloveGeometry';
+import {
+  createGloveBodyGeometry,
+  createCuffGeometry,
+  createLeatherMaps,
+  mirrorGeometry,
+} from './gloveGeometry';
 import { sceneState } from './sceneState';
 
 /**
- * The hero object: a sculpted PBR boxing glove.
+ * The hero object: a PAIR of sculpted PBR boxing gloves in guard stance.
  *
- * Realism comes from the material stack, not tricks: crimson leather with
- * procedural grain (bump + roughness breakup), a clearcoat layer for the
- * waxy sheen real gloves have, and the studio light rig + environment in
- * SceneContainer providing believable specular. The neon lives around the
- * glove (orbit rings, particles, impacts) — never on it.
+ * Two gloves instead of one because a pair is unmistakable — the mirrored
+ * silhouettes disambiguate each other the way a single form never can.
+ * Realism comes from the material stack: crimson leather with procedural
+ * grain (bump + roughness breakup) and a clearcoat layer for the waxy sheen,
+ * lit by the studio rig + environment in SceneContainer.
  *
- * Motion: heavy floating idle, magnetic tilt toward the cursor, a slow
- * presentation turn across the page scroll, and a punch lunge + inner
- * emissive flash on section impacts. No allocations inside useFrame.
+ * Motion is deliberately restrained — this is a product render, not a toy:
+ * a slow float, a gentle ~20° presentation turn across the entire page, and
+ * a subtle magnetic tilt toward the cursor. Section impacts add a short
+ * lunge + inner flash. No allocations inside useFrame.
  */
 
 // HDR ring colors — well above 1.0 so bloom reads them as neon.
@@ -23,16 +29,45 @@ const RING_A = new THREE.Color('#FF2E3E').multiplyScalar(2.6);
 const RING_B = new THREE.Color('#FF2E3E').multiplyScalar(1.3);
 const RING_C = new THREE.Color('#FF7A5C').multiplyScalar(1.8);
 
+interface GloveParts {
+  body: THREE.BufferGeometry;
+  cuff: THREE.BufferGeometry;
+  leather: THREE.MeshPhysicalMaterial;
+  cuffLeather: THREE.MeshPhysicalMaterial;
+  trim: THREE.MeshPhysicalMaterial;
+}
+
+/** One glove: body + cuff assembly (ribbed elastic, opening trim, strap). */
+function GloveUnit({ body, cuff, leather, cuffLeather, trim }: GloveParts) {
+  return (
+    <group>
+      <mesh geometry={body} material={leather} frustumCulled={false} />
+      <group position={[0, -1.0, 0]}>
+        <mesh geometry={cuff} material={cuffLeather} />
+        <mesh position={[0, -0.43, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.72, 0.055, 12, 72]} />
+          <primitive object={trim} attach="material" />
+        </mesh>
+        <mesh position={[0, 0.4, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.64, 0.05, 12, 72]} />
+          <primitive object={trim} attach="material" />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
 export function CinematicObject() {
   const groupRef = useRef<THREE.Group>(null);
+  const leftRef = useRef<THREE.Group>(null);
   const ringsRef = useRef<THREE.Group>(null);
 
-  const { bodyGeometry, cuffGeometry, leather, cuffLeather, trim } = useMemo(() => {
+  const parts = useMemo(() => {
     const maps = createLeatherMaps();
     maps.bump.repeat.set(4, 4);
     maps.rough.repeat.set(4, 4);
 
-    const leatherMat = new THREE.MeshPhysicalMaterial({
+    const leather = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color('#a81824'), // crimson; the key light lifts it further
       roughness: 0.72,
       roughnessMap: maps.rough,
@@ -46,11 +81,11 @@ export function CinematicObject() {
     });
 
     // The cuff reads as the same leather, a shade deeper and less coated.
-    const cuffMat = leatherMat.clone();
-    cuffMat.color.set('#7d101d');
-    cuffMat.clearcoat = 0.35;
+    const cuffLeather = leather.clone();
+    cuffLeather.color.set('#7d101d');
+    cuffLeather.clearcoat = 0.35;
 
-    const trimMat = new THREE.MeshPhysicalMaterial({
+    const trim = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color('#17171a'),
       roughness: 0.6,
       clearcoat: 0.25,
@@ -58,35 +93,38 @@ export function CinematicObject() {
       envMapIntensity: 0.8,
     });
 
+    const bodyRight = createGloveBodyGeometry();
     return {
-      bodyGeometry: createGloveBodyGeometry(),
-      cuffGeometry: createCuffGeometry(),
-      leather: leatherMat,
-      cuffLeather: cuffMat,
-      trim: trimMat,
-      maps,
+      bodyRight,
+      bodyLeft: mirrorGeometry(bodyRight),
+      cuff: createCuffGeometry(),
+      leather,
+      cuffLeather,
+      trim,
     };
   }, []);
 
   useEffect(
     () => () => {
-      bodyGeometry.dispose();
-      cuffGeometry.dispose();
-      leather.bumpMap?.dispose();
-      leather.roughnessMap?.dispose();
-      leather.dispose();
-      cuffLeather.dispose();
-      trim.dispose();
+      parts.bodyRight.dispose();
+      parts.bodyLeft.dispose();
+      parts.cuff.dispose();
+      parts.leather.bumpMap?.dispose();
+      parts.leather.roughnessMap?.dispose();
+      parts.leather.dispose();
+      parts.cuffLeather.dispose();
+      parts.trim.dispose();
     },
-    [bodyGeometry, cuffGeometry, leather, cuffLeather, trim],
+    [parts],
   );
 
   const dampedMouse = useRef(new THREE.Vector2(0, 0));
 
   useFrame((state, delta) => {
     const group = groupRef.current;
+    const left = leftRef.current;
     const rings = ringsRef.current;
-    if (!group || !rings) return;
+    if (!group || !left || !rings) return;
 
     const dt = Math.min(delta, 1 / 30);
     const t = state.clock.elapsedTime;
@@ -97,42 +135,43 @@ export function CinematicObject() {
     mouse.x = THREE.MathUtils.damp(mouse.x, sceneState.pointer.x, 2.5, dt);
     mouse.y = THREE.MathUtils.damp(mouse.y, sceneState.pointer.y, 2.5, dt);
 
-    // Guard stance: knuckles angled toward the lens, slow presentation turn
-    // over the scroll, magnetic tilt toward the cursor.
-    group.rotation.x = 0.18 + Math.sin(t * 0.2) * 0.05 - mouse.y * 0.26 - punch * 0.16;
-    group.rotation.y =
-      0.55 + Math.sin(t * 0.14) * 0.3 + sceneState.scroll * Math.PI * 1.4 + mouse.x * 0.4;
-    group.rotation.z = -0.24 + Math.cos(t * 0.17) * 0.04 + punch * 0.12;
-    group.position.y = Math.sin(t * 0.5) * 0.1;
-    group.position.z = punch * 1.0;
+    // Restrained presentation: ~20° total turn over the whole page, slow
+    // breath-rate float, small magnetic tilt. Nothing spins, nothing whips.
+    group.rotation.x = 0.06 + Math.sin(t * 0.2) * 0.02 - mouse.y * 0.1 - punch * 0.08;
+    group.rotation.y = Math.sin(t * 0.14) * 0.05 + sceneState.scroll * 0.35 + mouse.x * 0.14;
+    group.rotation.z = -0.04 + Math.cos(t * 0.17) * 0.015 + punch * 0.05;
+    group.position.y = Math.sin(t * 0.5) * 0.05;
+    group.position.z = punch * 0.45;
+
+    // The rear glove bobs on its own phase so the pair feels alive.
+    left.position.y = -0.28 + Math.sin(t * 0.5 + 1.6) * 0.035;
 
     // Inner flash on impact — the only moment the leather itself glows.
-    leather.emissiveIntensity = punch * 0.35;
+    parts.leather.emissiveIntensity = punch * 0.3;
 
-    rings.rotation.z = t * 0.14;
-    rings.rotation.x = Math.PI * 0.44 + Math.sin(t * 0.2) * 0.12 - mouse.y * 0.16;
-    rings.rotation.y = -sceneState.scroll * Math.PI * 0.9 + mouse.x * 0.2;
+    rings.rotation.z = t * 0.1;
+    rings.rotation.x = Math.PI * 0.44 + Math.sin(t * 0.2) * 0.08 - mouse.y * 0.08;
+    rings.rotation.y = -sceneState.scroll * 0.35 + mouse.x * 0.1;
   });
 
-  return (
-    <group ref={groupRef} scale={0.92}>
-      {/* Pose: raised fist — cuff down, knuckles up toward the lens, thumb
-          quartered in. The iconic silhouette; reads as a glove instantly. */}
-      <group rotation={[-0.35, 0.45, Math.PI]}>
-        <mesh geometry={bodyGeometry} material={leather} frustumCulled={false} />
+  const gloveParts: GloveParts = {
+    body: parts.bodyRight,
+    cuff: parts.cuff,
+    leather: parts.leather,
+    cuffLeather: parts.cuffLeather,
+    trim: parts.trim,
+  };
 
-        {/* Cuff assembly: ribbed elastic, dark top band, wrist strap. */}
-        <group position={[0, 1.0, 0]}>
-          <mesh geometry={cuffGeometry} material={cuffLeather} />
-          <mesh position={[0, 0.43, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.6, 0.05, 12, 72]} />
-            <primitive object={trim} attach="material" />
-          </mesh>
-          <mesh position={[0, -0.38, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.73, 0.055, 12, 72]} />
-            <primitive object={trim} attach="material" />
-          </mesh>
-        </group>
+  return (
+    <group ref={groupRef} scale={0.8}>
+      {/* Lead (right) glove: forward, angled slightly in. */}
+      <group position={[0.58, 0.08, 0.25]} rotation={[0.05, -0.35, -0.08]}>
+        <GloveUnit {...gloveParts} />
+      </group>
+
+      {/* Rear (left) glove: mirrored, tucked back and low — guard stance. */}
+      <group ref={leftRef} position={[-0.62, -0.28, -0.45]} rotation={[0.02, 0.4, 0.12]}>
+        <GloveUnit {...gloveParts} body={parts.bodyLeft} />
       </group>
 
       <group ref={ringsRef}>
