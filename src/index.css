@@ -1,0 +1,236 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+  --ease-smooth: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: #050506;
+  overscroll-behavior: none;
+}
+
+html.lenis {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: 'General Sans', 'Inter', system-ui, sans-serif;
+  color: #f5f3ef;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #ff2e3e;
+  color: #050506;
+}
+
+a,
+button {
+  font-family: inherit;
+}
+
+.font-display {
+  font-family: 'Inter Tight', 'Inter', sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Static grain / noise overlay — subtle celluloid texture */
+.noise-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Concrete texture utility */
+.concrete-texture {
+  background-image:
+    radial-gradient(ellipse 100% 80% at 50% 0%, rgba(255,255,255,0.015) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 30% 50%, rgba(255,255,255,0.01) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 70% 30%, rgba(255,255,255,0.008) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 60% at 20% 80%, rgba(255,255,255,0.012) 0%, transparent 60%);
+}
+
+/* Gym floor texture — layered concrete finish */
+.gym-floor {
+  background:
+    linear-gradient(180deg, rgba(30,30,34,0.4) 0%, transparent 40%, transparent 60%, rgba(30,30,34,0.4) 100%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(255,255,255,0.012) 3px,
+      rgba(255,255,255,0.012) 4px
+    ),
+    radial-gradient(ellipse 120% 80% at 50% 50%, #1a1a1e 0%, #0d0d0f 100%);
+}
+
+/* Leather texture pattern */
+.leather {
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255,255,255,0.015) 0%, transparent 30%),
+    radial-gradient(circle at 70% 60%, rgba(255,255,255,0.01) 0%, transparent 25%),
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,0.008) 0%, transparent 20%),
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.012) 0%, transparent 35%),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(255,255,255,0.006) 8px,
+      rgba(255,255,255,0.006) 9px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 8px,
+      rgba(255,255,255,0.006) 8px,
+      rgba(255,255,255,0.006) 9px
+    ),
+    #0d0d0f;
+}
+
+/* Focus ring for accessible keyboard navigation */
+.focus-ring:focus-visible {
+  outline: 2px solid #FF2E3E;
+  outline-offset: 2px;
+}
+
+/* Industrial metallic divider */
+.industrial-divider {
+  height: 1px;
+  border: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.04) 15%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,46,62,0.08) 85%,
+    transparent 100%
+  );
+  position: relative;
+}
+
+.industrial-divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.03) 20%,
+    transparent 100%
+  );
+  filter: blur(2px);
+}
+
+/* Impact shake for button click feedback */
+@keyframes impact-shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 0.5px); }
+  50% { transform: translate(1px, -0.5px); }
+  75% { transform: translate(0, 0); }
+}
+
+.impact-shake {
+  animation: impact-shake 0.15s ease-out;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 55;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75) 100%);
+}
+
+/* Utility: hide scrollbar for horizontal rails */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Slow breathe for accent elements */
+@keyframes breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Subtle pulse ring */
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 0.2; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+
+/* ── Page-load reveal overlay ── */
+/* Dark screen that clears from center with a warm light swell,
+   creating a cinematic "lights on" entrance. */
+.page-reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  pointer-events: none;
+  background: #050506;
+  animation: lightSwell 1.6s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+@keyframes lightSwell {
+  0% {
+    clip-path: circle(150% at 50% 50%);
+    background: radial-gradient(circle at 50% 50%, #050506 0%, #050506 100%);
+  }
+  30% {
+    background: radial-gradient(circle at 50% 50%, rgba(255, 179, 71, 0.10) 0%, rgba(5, 5, 6, 0.95) 50%);
+  }
+  60% {
+    background: radial-gradient(circle at 50% 50%, rgba(255, 179, 71, 0.06) 0%, rgba(5, 5, 6, 0.90) 45%);
+  }
+  100% {
+    clip-path: circle(0% at 50% 50%);
+    background: radial-gradient(circle at 50% 50%, transparent 0%, transparent 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
