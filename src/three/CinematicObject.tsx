@@ -25,9 +25,9 @@ import { sceneState } from './sceneState';
  */
 
 // HDR ring colors — well above 1.0 so bloom reads them as neon.
-const RING_A = new THREE.Color('#FF2E3E').multiplyScalar(2.6);
-const RING_B = new THREE.Color('#FF2E3E').multiplyScalar(1.3);
-const RING_C = new THREE.Color('#FF7A5C').multiplyScalar(1.8);
+const RING_A = new THREE.Color('#FF2E3E').multiplyScalar(3.2);
+const RING_B = new THREE.Color('#FF2E3E').multiplyScalar(1.6);
+const RING_C = new THREE.Color('#FF7A5C').multiplyScalar(2.2);
 
 interface GloveParts {
   body: THREE.BufferGeometry;
@@ -68,22 +68,22 @@ export function CinematicObject() {
     maps.rough.repeat.set(4, 4);
 
     const leather = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color('#a81824'), // crimson; the key light lifts it further
-      roughness: 0.72,
+      color: new THREE.Color('#8a1518'), // deep oxblood crimson; rich and authoritative
+      roughness: 0.65,
       roughnessMap: maps.rough,
       bumpMap: maps.bump,
-      bumpScale: 0.35,
-      clearcoat: 0.6,
-      clearcoatRoughness: 0.3,
-      envMapIntensity: 1.5,
+      bumpScale: 0.45,
+      clearcoat: 0.75,
+      clearcoatRoughness: 0.25,
+      envMapIntensity: 2.0,
       emissive: new THREE.Color('#FF2E3E'),
       emissiveIntensity: 0,
     });
 
     // The cuff reads as the same leather, a shade deeper and less coated.
     const cuffLeather = leather.clone();
-    cuffLeather.color.set('#7d101d');
-    cuffLeather.clearcoat = 0.35;
+    cuffLeather.color.set('#681014');
+    cuffLeather.clearcoat = 0.4;
 
     const trim = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color('#17171a'),
@@ -129,25 +129,19 @@ export function CinematicObject() {
     const dt = Math.min(delta, 1 / 30);
     const t = state.clock.elapsedTime;
     const mouse = dampedMouse.current;
-    const impact = sceneState.impact;
-    const punch = impact * impact;
 
     mouse.x = THREE.MathUtils.damp(mouse.x, sceneState.pointer.x, 2.5, dt);
     mouse.y = THREE.MathUtils.damp(mouse.y, sceneState.pointer.y, 2.5, dt);
 
     // Restrained presentation: ~20° total turn over the whole page, slow
     // breath-rate float, small magnetic tilt. Nothing spins, nothing whips.
-    group.rotation.x = 0.06 + Math.sin(t * 0.2) * 0.02 - mouse.y * 0.1 - punch * 0.08;
+    group.rotation.x = 0.06 + Math.sin(t * 0.2) * 0.02 - mouse.y * 0.1;
     group.rotation.y = Math.sin(t * 0.14) * 0.05 + sceneState.scroll * 0.35 + mouse.x * 0.14;
-    group.rotation.z = -0.04 + Math.cos(t * 0.17) * 0.015 + punch * 0.05;
+    group.rotation.z = -0.04 + Math.cos(t * 0.17) * 0.015;
     group.position.y = Math.sin(t * 0.5) * 0.05;
-    group.position.z = punch * 0.45;
 
     // The rear glove bobs on its own phase so the pair feels alive.
     left.position.y = -0.28 + Math.sin(t * 0.5 + 1.6) * 0.035;
-
-    // Inner flash on impact — the only moment the leather itself glows.
-    parts.leather.emissiveIntensity = punch * 0.3;
 
     rings.rotation.z = t * 0.1;
     rings.rotation.x = Math.PI * 0.44 + Math.sin(t * 0.2) * 0.08 - mouse.y * 0.08;

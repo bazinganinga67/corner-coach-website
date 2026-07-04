@@ -16,11 +16,9 @@ import { sceneState } from './sceneState';
 
 const CA_BASE = 0.00015;
 const CA_VELOCITY_SCALE = 0.003;
-const CA_MAX_EXTRA = 0.002;
-const CA_IMPACT_KICK = 0.002;
+const CA_MAX_EXTRA = 0.0015;
 
-const BLOOM_BASE = 0.25;
-const BLOOM_IMPACT_KICK = 0.4;
+const BLOOM_INTENSITY = 0.4;
 
 export function Effects() {
   const caOffset = useMemo(() => new THREE.Vector2(CA_BASE, CA_BASE * 0.6), []);
@@ -29,18 +27,12 @@ export function Effects() {
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 1 / 30);
-    const impact = sceneState.impact;
 
     const target =
       CA_BASE +
-      Math.min(Math.abs(sceneState.velocity) * CA_VELOCITY_SCALE, CA_MAX_EXTRA) +
-      impact * impact * CA_IMPACT_KICK;
+      Math.min(Math.abs(sceneState.velocity) * CA_VELOCITY_SCALE, CA_MAX_EXTRA);
     caCurrent.current = THREE.MathUtils.damp(caCurrent.current, target, 3.5, dt);
     caOffset.set(caCurrent.current, caCurrent.current * 0.6);
-
-    if (bloomRef.current) {
-      bloomRef.current.intensity = BLOOM_BASE + impact * BLOOM_IMPACT_KICK;
-    }
   });
 
   return (
@@ -48,7 +40,7 @@ export function Effects() {
       <Bloom
         ref={bloomRef as unknown as React.Ref<typeof BloomEffect>}
         mipmapBlur
-        intensity={BLOOM_BASE}
+        intensity={BLOOM_INTENSITY}
         luminanceThreshold={0.6}
         luminanceSmoothing={0.25}
         radius={0.85}

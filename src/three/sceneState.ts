@@ -42,14 +42,6 @@ export const sceneState = {
   stops: [] as SectionStop[],
   /** Bumped on every re-measure so frame loops can rebuild derived tracks cheaply. */
   stopsVersion: 0,
-  /**
-   * Section-impact energy, 1 → 0. Set to 1 by CameraRig when the scroll
-   * crosses into a new section; decayed each frame by ScrollSync. Drives the
-   * punch lunge, camera shake, FOV kick, shockwave, sparks, and bloom/CA
-   * spikes — one scalar, many consumers.
-   */
-  impact: 0,
-  /** Index of the camera shot currently in frame (-1 until first resolve). */
   activeShot: -1,
 };
 

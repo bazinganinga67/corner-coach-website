@@ -13,11 +13,6 @@ import { sceneState, SCENE_SECTION_IDS } from './sceneState';
  * damping on top of the already-Lenis-smoothed scroll gives the camera its
  * weight — it always arrives, never snaps.
  *
- * The rig is also the referee: it knows which shot is live, so when the
- * scroll crosses into a new section it fires `sceneState.impact = 1` — the
- * single scalar that detonates the punch lunge, shockwave, sparks, shake,
- * FOV kick, and bloom/aberration spikes across the other components.
- *
  * Zero allocations in the frame loop: every vector below is created once.
  */
 
@@ -67,10 +62,6 @@ const LAMBDA_LOOK = 2.8;
 const LAMBDA_FOV = 2.5;
 const LAMBDA_ROLL = 3.0;
 const LAMBDA_PARALLAX = 1.8;
-
-// Impact tuning.
-const SHAKE_AMPLITUDE = 0.055;
-const FOV_KICK = 6;
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
@@ -158,24 +149,6 @@ export function CameraRig() {
       targetRoll.current = THREE.MathUtils.lerp(a.roll, b.roll, t);
     }
 
-    // ---- Section-crossing detection → impact trigger ----
-    // The live shot is the last keyframe whose anchor the scroll has passed.
-    let shotIndex = 0;
-    for (let i = last; i >= 0; i--) {
-      if (p >= s.pool[i].at - 1e-4) {
-        shotIndex = i;
-        break;
-      }
-    }
-    if (shotIndex !== sceneState.activeShot) {
-      // Fire only on real transitions (not the initial resolve), and don't
-      // machine-gun retrigger while a hit is still ringing.
-      if (sceneState.activeShot !== -1 && sceneState.impact < 0.55) {
-        sceneState.impact = 1;
-      }
-      sceneState.activeShot = shotIndex;
-    }
-
     // ---- Natural operator sway + mouse parallax ----
     const t = state.clock.elapsedTime;
     s.targetPos.y += Math.sin(t * 0.22) * 0.025;
@@ -193,13 +166,6 @@ export function CameraRig() {
     cam.position.y = THREE.MathUtils.damp(cam.position.y, s.targetPos.y, LAMBDA_POS, dt);
     cam.position.z = THREE.MathUtils.damp(cam.position.z, s.targetPos.z, LAMBDA_POS, dt);
 
-    // ---- Impact shake: multi-frequency, decays with the impact scalar ----
-    const k = sceneState.impact * sceneState.impact;
-    if (k > 0.0001) {
-      cam.position.x += (Math.sin(t * 39.7) + Math.sin(t * 63.1) * 0.5) * SHAKE_AMPLITUDE * k;
-      cam.position.y += (Math.cos(t * 47.3) + Math.cos(t * 71.9) * 0.5) * SHAKE_AMPLITUDE * 0.85 * k;
-    }
-
     s.currentLook.x = THREE.MathUtils.damp(s.currentLook.x, s.targetLook.x, LAMBDA_LOOK, dt);
     s.currentLook.y = THREE.MathUtils.damp(s.currentLook.y, s.targetLook.y, LAMBDA_LOOK, dt);
     s.currentLook.z = THREE.MathUtils.damp(s.currentLook.z, s.targetLook.z, LAMBDA_LOOK, dt);
@@ -214,10 +180,8 @@ export function CameraRig() {
     );
     cam.rotateZ(currentRoll.current);
 
-    // ---- FOV: damped lens change + impact punch-in ----
-    const dampedFov = THREE.MathUtils.damp(cam.fov + k * FOV_KICK, targetFov.current, LAMBDA_FOV, dt);
-    const nextFov = dampedFov - k * FOV_KICK;
-    // updateProjectionMatrix isn't free — only pay for it when fov moves.
+    // ---- FOV: damped lens change ----
+    const nextFov = THREE.MathUtils.damp(cam.fov, targetFov.current, LAMBDA_FOV, dt);
     if (Math.abs(nextFov - cam.fov) > 0.005) {
       cam.fov = nextFov;
       cam.updateProjectionMatrix();

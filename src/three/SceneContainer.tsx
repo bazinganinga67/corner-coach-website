@@ -6,7 +6,6 @@ import { PerformanceMonitor, Environment, Lightformer } from '@react-three/drei'
 import { CameraRig } from './CameraRig';
 import { CinematicObject } from './CinematicObject';
 import { ParticleField } from './ParticleField';
-import { ImpactFX } from './ImpactFX';
 import { Effects } from './Effects';
 import { sceneState, useSceneStateBindings } from './sceneState';
 
@@ -19,8 +18,6 @@ function ScrollSync() {
     const instantaneous = (raw - sceneState.scroll) / dt;
     sceneState.velocity = THREE.MathUtils.damp(sceneState.velocity, instantaneous, 5, dt);
     sceneState.scroll = raw;
-
-    sceneState.impact = sceneState.impact < 0.001 ? 0 : sceneState.impact * Math.exp(-dt * 2.4);
   }, -100);
   return null;
 }
@@ -249,7 +246,6 @@ export default function SceneContainer() {
 
             <CinematicObject />
             <ParticleField />
-            <ImpactFX />
           </Suspense>
           <Effects />
         </PerformanceMonitor>
