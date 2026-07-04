@@ -150,11 +150,15 @@ export default function SceneContainer() {
   const [dpr, setDpr] = useState(() =>
     Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 1),
   );
+  // GPU can evict the context on low-memory devices (common on mobile
+  // Safari); when that happens the canvas is dead black, so drop it and let
+  // the StaticBackdrop show through instead.
+  const [contextLost, setContextLost] = useState(false);
   const supported = useMemo(canRenderScene, []);
 
   useSceneStateBindings();
 
-  if (!supported) return null;
+  if (!supported || contextLost) return null;
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
@@ -162,6 +166,16 @@ export default function SceneContainer() {
         flat
         dpr={dpr}
         frameloop="always"
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener(
+            'webglcontextlost',
+            (e) => {
+              e.preventDefault();
+              setContextLost(true);
+            },
+            { once: true },
+          );
+        }}
         performance={{ min: 0.5 }}
         camera={{ fov: 42, near: 0.1, far: 80, position: [2.6, 0.3, 5.8] }}
         gl={{

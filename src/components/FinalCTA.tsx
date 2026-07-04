@@ -6,11 +6,44 @@ import { MagneticButton } from './MagneticButton';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 
-// Wire a real list provider (Formspree, ConvertKit, Mailchimp, Resend Audiences...)
-// by setting VITE_WAITLIST_ENDPOINT to a POST endpoint that accepts { email }.
-// Without it, the form still works end-to-end but only confirms locally —
-// no email is actually captured anywhere.
+// Mailchimp embedded-form action URL — the one that looks like
+// https://xxxx.usXX.list-manage.com/subscribe/post?u=...&id=...
+// Set it as VITE_MAILCHIMP_URL in Vercel env vars. Mailchimp sends the
+// confirmation email from its own servers, so no verified domain is needed.
+const MAILCHIMP_URL = import.meta.env.VITE_MAILCHIMP_URL as string | undefined;
+
+// Legacy fallback: any POST endpoint that accepts { email }.
 const ENDPOINT = import.meta.env.VITE_WAITLIST_ENDPOINT as string | undefined;
+
+// Mailchimp's signup endpoint has no CORS headers, so a fetch() would be
+// blocked by the browser. Their sanctioned workaround is the JSONP variant
+// of the same URL (subscribe/post-json + a callback param).
+function subscribeMailchimp(actionUrl: string, email: string): Promise<{ result: string; msg: string }> {
+  return new Promise((resolve, reject) => {
+    const cbName = `__mcCallback${Date.now()}`;
+    const script = document.createElement('script');
+    const timer = window.setTimeout(() => {
+      cleanup();
+      reject(new Error('timeout'));
+    }, 10000);
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      delete (window as unknown as Record<string, unknown>)[cbName];
+      script.remove();
+    };
+    (window as unknown as Record<string, unknown>)[cbName] = (data: { result: string; msg: string }) => {
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('network'));
+    };
+    const base = actionUrl.replace('/subscribe/post?', '/subscribe/post-json?');
+    script.src = `${base}&EMAIL=${encodeURIComponent(email)}&c=${cbName}`;
+    document.body.appendChild(script);
+  });
+}
 
 export function FinalCTA() {
   const [email, setEmail] = useState('');
@@ -20,6 +53,18 @@ export function FinalCTA() {
     e.preventDefault();
     if (!email.includes('@')) return;
     setStatus('sending');
+
+    if (MAILCHIMP_URL) {
+      try {
+        const data = await subscribeMailchimp(MAILCHIMP_URL, email);
+        // "already subscribed" errors still mean they're on the list.
+        const ok = data.result === 'success' || /already subscribed/i.test(data.msg);
+        setStatus(ok ? 'done' : 'error');
+      } catch {
+        setStatus('error');
+      }
+      return;
+    }
 
     if (ENDPOINT) {
       try {
